@@ -1,0 +1,42 @@
+---
+title: "Higher Education Historic Enrollment"
+author: "Luis Barajas"
+date: "2023-02-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Higher Education Historic Enrollment
+
+
+```{r}
+# Library
+suppressMessages(library(dplyr))
+suppressMessages(library(magrittr))
+suppressMessages(library(readxl))
+suppressMessages(library(ggplot2))
+```
+
+
+```{r, echo=FALSE}
+# Reading the required data
+mat_20002013 = suppressMessages(read_xls("Matricula2000-2013.xls", skip = 6))
+
+
+```
+
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
