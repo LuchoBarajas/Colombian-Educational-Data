@@ -17,18 +17,40 @@ knitr::opts_chunk$set(echo = TRUE)
 suppressMessages(library(dplyr))
 suppressMessages(library(magrittr))
 suppressMessages(library(readxl))
+suppressMessages(library(openxlsx))
 suppressMessages(library(ggplot2))
 ```
 
 
 ```{r, echo=FALSE}
 # Reading the required data
-mat_20002013 = suppressMessages(read_xls("Matricula2000-2013.xls", skip = 6))
 
+mat_20002013 = read.xlsx("Matricula20002013.xlsx", startRow = 6)
+mat_2014 = read.xlsx("Matricula2014.xlsx", startRow = 6)
+mat_2015 = read.xlsx("Matricula2015.xlsx", startRow = 6)
+mat_2016 = read.xlsx("Matricula2016.xlsx", startRow = 6)
+mat_2017 = read.xlsx("Matricula2017.xlsx", startRow = 6)
+mat_2018 = read.xlsx("Matricula2018.xlsx", startRow = 7)
+mat_2019 = read.xlsx("Matricula2019.xlsx", startRow = 6)
+mat_2020 = read.xlsx("Matricula2020.xlsx", startRow = 6)
+mat_2021 = read.xlsx("Matricula2021.xlsx", startRow = 11)
 
 ```
 
 
+```{r}
+# Processing and standarizing databases
+
+mat_estadistica <- function(basematricula){
+  IES = basematricula %>% filter(CODIGO_IES != 9110 & Semestre == 1 )
+  SENA = basematricula %>% filter(CODIGO_IES == 9110 & Semestre == 2 )
+  baseestadistica = rbind(IES, SENA)
+  return(baseestadistica)
+}
+
+mat_esta_2018 = mat_estadistica(mat_2018)
+
+```
 
 
 ## Including Plots
