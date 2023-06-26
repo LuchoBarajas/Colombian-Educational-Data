@@ -19,6 +19,7 @@ suppressMessages(library(magrittr))
 suppressMessages(library(readxl))
 suppressMessages(library(openxlsx))
 suppressMessages(library(ggplot2))
+suppressMessages(library(tidyr))
 ```
 
 
@@ -31,8 +32,8 @@ mat_2015 = read.xlsx("Matricula2015.xlsx", startRow = 6)
 mat_2016 = read.xlsx("Matricula2016.xlsx", startRow = 6)
 mat_2017 = read.xlsx("Matricula2017.xlsx", startRow = 6)
 mat_2018 = read.xlsx("Matricula2018.xlsx", startRow = 7)
-mat_2019 = read.xlsx("Matricula2019.xlsx", startRow = 6)
-mat_2020 = read.xlsx("Matricula2020.xlsx", startRow = 6)
+mat_2019 = read.xlsx("Matricula2019.xlsx", startRow = 8)
+mat_2020 = read.xlsx("Matricula2020.xlsx", startRow = 9)
 mat_2021 = read.xlsx("Matricula2021.xlsx", startRow = 11)
 
 ```
@@ -41,6 +42,15 @@ mat_2021 = read.xlsx("Matricula2021.xlsx", startRow = 11)
 ```{r}
 # Processing and standarizing databases
 
+mat_2014 %<>% select(CODIGO_IES = Código.de.la.Institución, everything())
+mat_2015 %<>% select(CODIGO_IES = Código.de.la.Institución, everything())
+mat_2016 %<>% select(CODIGO_IES = Código.de.la.Institución, everything())
+mat_2017 %<>% select(CODIGO_IES = Código.de.la.Institución, everything())
+mat_2018 %<>% select(CODIGO_IES = Código.de.la.Institución, everything())
+mat_2019 %<>% select(CODIGO_IES = CÓDIGO.DE.LA.INSTITUCIÓN, Semestre = SEMESTRE, everything())
+mat_2020 %<>% select(CODIGO_IES = CÓDIGO.DE.LA.INSTITUCIÓN, Semestre = SEMESTRE, everything())
+mat_2021 %<>% select(CODIGO_IES = CÓDIGO.DE.LA.INSTITUCIÓN, Semestre = SEMESTRE, everything())
+
 mat_estadistica <- function(basematricula){
   IES = basematricula %>% filter(CODIGO_IES != 9110 & Semestre == 1 )
   SENA = basematricula %>% filter(CODIGO_IES == 9110 & Semestre == 2 )
@@ -48,17 +58,150 @@ mat_estadistica <- function(basematricula){
   return(baseestadistica)
 }
 
+# 2000 - 2013
+
+mat_20002013 %<>% select(-`Total.2000-1`,-`Total.2000-2`,
+                         -`Total.2001-1`,-`Total.2001-2`,
+                         -`Total.2002-1`,-`Total.2002-2`,
+                         -`Total.2003-1`,-`Total.2003-2`,
+                         -`Total.2004-1`,-`Total.2004-2`,
+                         -`Total.2005-1`,-`Total.2005-2`,
+                         -`Total.2006-1`,-`Total.2006-2`,
+                         -`Total.2007-1`,-`Total.2007-2`,
+                         -`Total.2008-1`,-`Total.2008-2`,
+                         -`Total.2009-1`,-`Total.2009-2`,
+                         -`Total.2010-1`,-`Total.2010-2`,
+                         -`Total.2011-1`,-`Total.2011-2`,
+                         -`Total.2012-1`,-`Total.2012-2`,
+                         -`Total.2013-1`,-`Total.2013-2`)
+
+mat_20002013 %<>% mutate(NIVEL_ACADEMICO = if_else(Nivel.de.Formación == "DOCTORADO" | Nivel.de.Formación == "ESPECIALIZACION" | Nivel.de.Formación == "MAESTRIA", "POSGRADO", "PREGRADO"))
+
+mat_20002013 %<>% pivot_longer(cols = `Hombre.2000-1`:`Mujer.2013-2`, names_to = "A", values_to = "TOTAL_MATRICULA ")
+
+mat_20002013 %<>% separate(A, into =c("SEXO", "AÑO", "SEMESTRE"), sep = "[.-]")
+
+
+# 2000 - 2013
+
+mat_20002013 %<>% select(CODIGO_IES = Código.de.la.Institución, IES_PADRE = Código.de.la.Institución, IES = `Institución.de.Educación.Superior.(IES)`, SECTOR = Sector.IES, CARACTER = Carácter.IES, COD_DPTO_IES = `Código.del.departamento.(IES)`, DPTO_IES = Departamento.de.domicilio.de.la.IES, 
+                                   CODIGO_MUN_IES =`Código.del.Municipio.(IES)`, MUN_IES = Municipio.de.domicilio.de.la.IES,CODIGO_SNIES_PROGRAMA=Código.SNIES.del.programa, PROGRAMA =Programa.Académico, NIVEL_ACADEMICO, NIVEL_FORMACION = Nivel.de.Formación, METODOLOGIA = Metodología.del.programa, AREA_CONOCIMIENTO = Área.de.Conocimiento, NBC = `Núcleo.Básico.del.Conocimiento.(NBC)`, COD_DPTO_PROGRAMA = `Código.del.Departamento.(Programa)`,
+                                   DPTO_PROGRAMA = Departamento.de.oferta.del.programa, COD_MUN_PROGRAMA = `Código.del.Municipio.(Programa)`, MUN_PROGRAMA = Municipio.de.oferta.del.programa,SEXO,AÑO,SEMESTRE,`TOTAL_MATRICULA `)
+
+
+# 2014
+
+mat_esta_2014 = mat_estadistica(mat_2014)
+rm(mat_2014)
+
+mat_esta_2014 %<>% select(CODIGO_IES, IES_PADRE = IES.PADRE, IES = `Institución.de.Educación.Superior.(IES)`, SECTOR = Sector.IES, CARACTER = Caracter.IES,
+                          COD_DPTO_IES = `Código.del.departamento.(IES)`, DPTO_IES = Departamento.de.domicilio.de.la.IES, COD_MUN_IES = `Código.del.Municipio.(IES)`, MUN_IES = Municipio.de.domicilio.de.la.IES, CODIGO_SNIES_PROGRAMA = Código.SNIES.del.programa, 
+                          PROGRAMA = Programa.Académico, NIVEL_ACADEMICO = Nivel.Académico,
+                          NIVEL_FORMACION = Nivel.de.Formación, METODOLOGIA = Metodología,
+                          AREA_CONOCIMIENTO = Área.de.Conocimiento, NBC = `Núcleo.Básico.del.Conocimiento.(NBC)`, COD_DPTO_PROGRAMA = `Código.del.Departamento.(Programa)`,
+                          DPTO_PROGRAMA = Departamento.de.oferta.del.programa, COD_MUN_PROGRAMA = `Código.del.Municipio.(Programa)`, MUN_PROGRAMA = Municipio.de.oferta.del.programa,
+                          SEXO = Género, AÑO = Año, SEMESTRE = Semestre, TOTAL_MATRICULA = Matriculados.2014)
+
+# 2015
+
+mat_esta_2015 = mat_estadistica(mat_2015)
+rm(mat_2015)
+
+mat_esta_2015 %<>% select(CODIGO_IES, IES_PADRE = IES.PADRE, IES = `Institución.de.Educación.Superior.(IES)`, SECTOR = Sector.IES, CARACTER = Caracter.IES,
+                          COD_DPTO_IES = `Código.del.departamento.(IES)`, DPTO_IES = Departamento.de.domicilio.de.la.IES, COD_MUN_IES = `Código.del.Municipio.(IES)`, MUN_IES = Municipio.de.domicilio.de.la.IES, CODIGO_SNIES_PROGRAMA = Código.SNIES.del.programa, 
+                          PROGRAMA = Programa.Académico, NIVEL_ACADEMICO = Nivel.Académico,
+                          NIVEL_FORMACION = Nivel.de.Formación, METODOLOGIA = Metodología,
+                          AREA_CONOCIMIENTO = Área.de.Conocimiento, NBC = `Núcleo.Básico.del.Conocimiento.(NBC)`, COD_DPTO_PROGRAMA = `Código.del.Departamento.(Programa)`,
+                          DPTO_PROGRAMA = Departamento.de.oferta.del.programa, COD_MUN_PROGRAMA = `Código.del.Municipio.(Programa)`, MUN_PROGRAMA = Municipio.de.oferta.del.programa,
+                          SEXO = Género, AÑO = Año, SEMESTRE = Semestre, TOTAL_MATRICULA = Matriculados.2015)
+
+# 2016
+
+mat_esta_2016 = mat_estadistica(mat_2016)
+rm(mat_2016)
+
+mat_esta_2016 %<>% select(CODIGO_IES, IES_PADRE = IES.PADRE, IES = `Institución.de.Educación.Superior.(IES)`, SECTOR = Sector.IES, CARACTER = Caracter.IES,
+                          COD_DPTO_IES = `Código.del.departamento.(IES)`, DPTO_IES = Departamento.de.domicilio.de.la.IES, COD_MUN_IES = `Código.del.Municipio.(IES)`, MUN_IES = Municipio.de.domicilio.de.la.IES, CODIGO_SNIES_PROGRAMA = Código.SNIES.del.programa, 
+                          PROGRAMA = Programa.Académico, NIVEL_ACADEMICO = Nivel.Académico,
+                          NIVEL_FORMACION = Nivel.de.Formación, METODOLOGIA = Metodología,
+                          AREA_CONOCIMIENTO = Área.de.Conocimiento, NBC = `Núcleo.Básico.del.Conocimiento.(NBC)`, COD_DPTO_PROGRAMA = `Código.del.Departamento.(Programa)`,
+                          DPTO_PROGRAMA = Departamento.de.oferta.del.programa, COD_MUN_PROGRAMA = `Código.del.Municipio.(Programa)`, MUN_PROGRAMA = Municipio.de.oferta.del.programa,
+                          GENERO = Sexo, AÑO = Año, SEMESTRE = Semestre, TOTAL_MATRICULA = Matriculados.2016)
+
+# 2017
+
+mat_esta_2017 = mat_estadistica(mat_2017)
+rm(mat_2017)
+
+mat_esta_2017 %<>% select(CODIGO_IES, IES_PADRE = IES.PADRE, IES = `Institución.de.Educación.Superior.(IES)`, SECTOR = Sector.IES, CARACTER = Caracter.IES,
+                          COD_DPTO_IES = `Código.del.departamento.(IES)`, DPTO_IES = Departamento.de.domicilio.de.la.IES, COD_MUN_IES = `Código.del.Municipio.(IES)`, MUN_IES = Municipio.de.domicilio.de.la.IES, CODIGO_SNIES_PROGRAMA = Código.SNIES.del.programa, 
+                          PROGRAMA = Programa.Académico, NIVEL_ACADEMICO = Nivel.Académico,
+                          NIVEL_FORMACION = Nivel.de.Formación, METODOLOGIA = Metodología,
+                          AREA_CONOCIMIENTO = Área.de.Conocimiento, NBC = `Núcleo.Básico.del.Conocimiento.(NBC)`, COD_DPTO_PROGRAMA = `Código.del.Departamento.(Programa)`,
+                          DPTO_PROGRAMA = Departamento.de.oferta.del.programa, COD_MUN_PROGRAMA = `Código.del.Municipio.(Programa)`, MUN_PROGRAMA = Municipio.de.oferta.del.programa,
+                          GENERO = Sexo, AÑO = Año, SEMESTRE = Semestre, TOTAL_MATRICULA = Matriculados.2017)
+
+# 2018
+
 mat_esta_2018 = mat_estadistica(mat_2018)
+rm(mat_2018)
+
+mat_esta_2018 %<>% select(CODIGO_IES, IES_PADRE = IES.PADRE, IES = `Institución.de.Educación.Superior.(IES)`, SECTOR = Sector.IES, CARACTER = Caracter.IES,
+                          COD_DPTO_IES = `Código.del.departamento.(IES)`, DPTO_IES = Departamento.de.domicilio.de.la.IES, COD_MUN_IES = `Código.del.Municipio.(IES)`, MUN_IES = Municipio.de.domicilio.de.la.IES, CODIGO_SNIES_PROGRAMA = Código.SNIES.del.programa, 
+                          PROGRAMA = Programa.Académico, NIVEL_ACADEMICO = Nivel.Académico,
+                          NIVEL_FORMACION = Nivel.de.Formación, METODOLOGIA = Metodología,
+                          AREA_CONOCIMIENTO = Área.de.Conocimiento, NBC = `Núcleo.Básico.del.Conocimiento.(NBC)`, COD_DPTO_PROGRAMA = `Código.del.Departamento.(Programa)`,
+                          DPTO_PROGRAMA = Departamento.de.oferta.del.programa, COD_MUN_PROGRAMA = `Código.del.Municipio.(Programa)`, MUN_PROGRAMA = Municipio.de.oferta.del.programa,
+                          GENERO = Sexo, AÑO = Año, SEMESTRE = Semestre, TOTAL_MATRICULA = Matriculados.2018)
+
+# 2019
+
+mat_esta_2019 = mat_estadistica(mat_2019)
+rm(mat_2019)
+
+mat_esta_2019 %<>% select(CODIGO_IES, IES_PADRE = IES_PADRE, IES = `INSTITUCIÓN.DE.EDUCACIÓN.SUPERIOR.(IES)`, SECTOR = SECTOR.IES, CARACTER = CARACTER.IES,
+                          COD_DPTO_IES = `CÓDIGO.DEL.DEPARTAMENTO.(IES)`, DPTO_IES = DEPARTAMENTO.DE.DOMICILIO.DE.LA.IES, COD_MUN_IES = CÓDIGO.DEL.MUNICIPIO, MUN_IES = MUNICIPIO.DE.DOMICILIO.DE.LA.IES, CODIGO_SNIES_PROGRAMA = CÓDIGO.SNIES.DEL.PROGRAMA, 
+                          PROGRAMA = PROGRAMA.ACADÉMICO, NIVEL_ACADEMICO = NIVEL.ACADÉMICO,
+                          NIVEL_FORMACION = NIVEL.DE.FORMACIÓN, METODOLOGIA = METODOLOGÍA,
+                          AREA_CONOCIMIENTO = ÁREA.DE.CONOCIMIENTO, NBC = `NÚCLEO.BÁSICO.DEL.CONOCIMIENTO.(NBC)`, COD_DPTO_PROGRAMA = `CÓDIGO.DEL.DEPARTAMENTO.(PROGRAMA)`,
+                          DPTO_PROGRAMA = DEPARTAMENTO.DE.OFERTA.DEL.PROGRAMA, COD_MUN_PROGRAMA = `CÓDIGO.DEL.MUNICIPIO.(PROGRAMA)`, MUN_PROGRAMA = MUNICIPIO.DE.OFERTA.DEL.PROGRAMA,
+                          GENERO = SEXO, AÑO = AÑO, SEMESTRE = Semestre, TOTAL_MATRICULA = MATRICULADOS)
+
+# 2020 
+
+mat_esta_2020 = mat_estadistica(mat_2020)
+rm(mat_2020)
+
+mat_esta_2020 %<>% select(CODIGO_IES, IES_PADRE = IES_PADRE, IES = `INSTITUCIÓN.DE.EDUCACIÓN.SUPERIOR.(IES)`, SECTOR = SECTOR.IES, CARACTER = CARACTER.IES,
+                          COD_DPTO_IES = `CÓDIGO.DEL.DEPARTAMENTO.(IES)`, DPTO_IES = DEPARTAMENTO.DE.DOMICILIO.DE.LA.IES, COD_MUN_IES = `CÓDIGO.DEL.MUNICIPIO.(IES)`, MUN_IES = MUNICIPIO.DE.DOMICILIO.DE.LA.IES, CODIGO_SNIES_PROGRAMA = CÓDIGO.SNIES.DEL.PROGRAMA, 
+                          PROGRAMA = PROGRAMA.ACADÉMICO, NIVEL_ACADEMICO = NIVEL.ACADÉMICO,
+                          NIVEL_FORMACION = NIVEL.DE.FORMACIÓN, METODOLOGIA = METODOLOGÍA,
+                          AREA_CONOCIMIENTO = ÁREA.DE.CONOCIMIENTO, NBC = `NÚCLEO.BÁSICO.DEL.CONOCIMIENTO.(NBC)`, COD_DPTO_PROGRAMA = `CÓDIGO.DEL.DEPARTAMENTO.(PROGRAMA)`,
+                          DPTO_PROGRAMA = DEPARTAMENTO.DE.OFERTA.DEL.PROGRAMA, COD_MUN_PROGRAMA = `CÓDIGO.DEL.MUNICIPIO.(PROGRAMA)`, MUN_PROGRAMA = MUNICIPIO.DE.OFERTA.DEL.PROGRAMA,
+                          GENERO = SEXO, AÑO = AÑO, SEMESTRE = Semestre, TOTAL_MATRICULA = MATRICULADOS)
+
+# 2021
+
+mat_esta_2021 = mat_estadistica(mat_2021)
+rm(mat_2021)
+
+
+mat_esta_2021 %<>% select(CODIGO_IES, IES_PADRE = IES_PADRE, IES = `INSTITUCIÓN.DE.EDUCACIÓN.SUPERIOR.(IES)`, SECTOR = SECTOR.IES, CARACTER = CARACTER.IES,
+                          COD_DPTO_IES = `CÓDIGO.DEL.DEPARTAMENTO.(IES)`, DPTO_IES = DEPARTAMENTO.DE.DOMICILIO.DE.LA.IES, COD_MUN_IES = `CÓDIGO.DEL.MUNICIPIO.(IES)`, MUN_IES = MUNICIPIO.DE.DOMICILIO.DE.LA.IES, CODIGO_SNIES_PROGRAMA = CÓDIGO.SNIES.DEL.PROGRAMA, 
+                          PROGRAMA = PROGRAMA.ACADÉMICO, NIVEL_ACADEMICO = NIVEL.ACADÉMICO,
+                          NIVEL_FORMACION = NIVEL.DE.FORMACIÓN, METODOLOGIA = METODOLOGÍA,
+                          AREA_CONOCIMIENTO = ÁREA.DE.CONOCIMIENTO, NBC = `NÚCLEO.BÁSICO.DEL.CONOCIMIENTO.(NBC)`, COD_DPTO_PROGRAMA = `CÓDIGO.DEL.DEPARTAMENTO.(PROGRAMA)`,
+                          DPTO_PROGRAMA = DEPARTAMENTO.DE.OFERTA.DEL.PROGRAMA, COD_MUN_PROGRAMA = `CÓDIGO.DEL.MUNICIPIO.(PROGRAMA)`, MUN_PROGRAMA = MUNICIPIO.DE.OFERTA.DEL.PROGRAMA,
+                          GENERO = SEXO, AÑO = AÑO, SEMESTRE = Semestre, TOTAL_MATRICULA = MATRICULADOS)
+
+Historico_Matricula = rbind(mat_esta_2014, mat_esta_2015, mat_esta_2016, mat_esta_2017,
+                            mat_esta_2018, mat_esta_2019, mat_esta_2020, mat_esta_2021)
+
+rm(mat_esta_2014, mat_esta_2015, mat_esta_2016, mat_esta_2017,
+                            mat_esta_2018, mat_esta_2019, mat_esta_2020, mat_esta_2021)
+
+
 
 ```
 
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
