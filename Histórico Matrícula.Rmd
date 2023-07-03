@@ -26,6 +26,9 @@ suppressMessages(library(openxlsx))
 suppressMessages(library(ggplot2))
 suppressMessages(library(tidyr))
 suppressMessages(library(stringr))
+suppressMessages(library(ggplot2))
+suppressMessages(library(anytime))
+suppressMessages(library(ggthemes))
 ```
 
 
@@ -249,11 +252,62 @@ Historico_Matricula_ES$NIVEL_FORMACION %<>% str_replace_all("UNIVERSITARIA", "UN
 ## First Plot enrollment by Sector
 
 ```{r}
-Sector = Historico_Matricula_ES %>% group_by(AÑO, SECTOR) %>% summarise(Total_Matricula = sum(TOTAL_MATRICULA))
+
+Sector = Historico_Matricula_ES  %>% group_by(AÑO, SECTOR) %>% summarise(Total_Matricula = sum(TOTAL_MATRICULA)) %>% ungroup()
+
+Sector %<>% filter(AÑO > 2001)
+Sector$AÑO %<>% anydate()
+Sector %<>% mutate(AÑO = if_else(AÑO =="2002-01-01", anydate("2002-08-07"), AÑO))
+Sector %<>% mutate(AÑO = if_else(AÑO =="2021-01-01", anydate("2021-12-31"), AÑO))
+
+
+nombres = c("Alvaro Uribe 1","Alvaro Uribe 2", "Juan M. Santos 1","Juan M. Santos 2", "Iván Duque")
+comienzo = as.Date(c("2002-08-07", "2006-08-07", "2010-08-07","2014-08-07","2018-08-07"))
+final = c(comienzo[-1], as.Date("2021-12-31"))
+gob <- c("Alvaro Uribe", "Alvaro Uribe", "Juan M. Santos", "Juan M. Santos", "Ivan Duque")
+
+presidentes <- data.frame(nombres, comienzo, final, gob, stringsAsFactors=F)
+presidentes$gob %<>% factor(levels=c("Alvaro Uribe","Juan M. Santos", "Ivan Duque"))
+
+ggplot(Sector) + geom_line(aes(x=AÑO, y=Total_Matricula, group = SECTOR, colour = SECTOR)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1))
+
+yrng <- range(Sector$Total_Matricula, na.rm=TRUE)
+xrng <- range(Sector$AÑO, na.rm=TRUE)
+
+matplot = ggplot(Sector) + geom_line(aes(x=AÑO, y=Total_Matricula, group = SECTOR, colour = SECTOR)) + 
+  scale_color_manual(values = c("#450c54","#22908b"))+ geom_rect(data = presidentes, 
+            aes(xmin = comienzo, xmax=final,
+                fill = gob), 
+            ymin=yrng[1]-1000000, ymax=yrng[2]+1000000) + scale_fill_manual(values = alpha(c("purple","green", "blue"), 0.2)) + geom_vline(data=presidentes, aes(xintercept=as.numeric(comienzo)),
+    color="grey50", linetype=5, size=0.5) +labs(title="Matrícula Histórica en Educación Superior por Sector",
+        y = "Total matrícula", 
+        caption = c("Fuente: Ministerio de Educación Nacional - Colombia", "Elaboración: @luchobarajas_"),
+        colour ="") +
+  theme(panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size =20),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=c(0,1), size = 14),axis.text = element_text(size = 14), 
+        legend.text = element_text(size = 12)) +
+  geom_text(aes(x= anydate("2002-08-07"), label="\nÁlvaro Uribe 1", y=1100000), colour="#9575CD", angle=90, size = 4)+
+  geom_text(aes(x= anydate("2006-08-07"), label="\nÁlvaro Uribe 2", y=1100000), colour="#9575CD", angle=90, size = 4)+
+  geom_text(aes(x= anydate("2010-08-07"), label="\nJuan M.Santos 1", y=500000), colour="#009688", angle=90, size = 4)+
+  geom_text(aes(x= anydate("2014-08-07"), label="\nJuan M.Santos 2 - Ser Pilo Paga", y=590000), colour="#009688", angle=90, size = 4)+
+  geom_text(aes(x= anydate("2018-08-07"), label="\nIván Duque - Generación E", y=570000), colour="#3F51B5", angle=90, size = 4) + guides(fill = "none") 
+
+matplot
+  
+ggsave("Histórico Matrícula.png", matplot, width = 12, height = 7)
 
 
 
 
 ```
+
+
+
 
 
