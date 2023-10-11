@@ -29,6 +29,8 @@ suppressMessages(library(stringr))
 suppressMessages(library(ggplot2))
 suppressMessages(library(anytime))
 suppressMessages(library(ggthemes))
+suppressMessages(library(tidyverse))
+suppressMessages(library(gganimate))
 ```
 
 
@@ -44,6 +46,8 @@ mat_2018 = read.xlsx("Matricula2018.xlsx", startRow = 7)
 mat_2019 = read.xlsx("Matricula2019.xlsx", startRow = 8)
 mat_2020 = read.xlsx("Matricula2020.xlsx", startRow = 9)
 mat_2021 = read.xlsx("Matricula2021.xlsx", startRow = 11)
+mat_2022 = read.xlsx("Matricula2022.xlsx", startRow = 9)
+
 
 ```
 
@@ -216,11 +220,32 @@ mat_esta_2021 %<>% select(CODIGO_IES, IES_PADRE = IES_PADRE, IES = `INSTITUCIÓN
                           DPTO_PROGRAMA = DEPARTAMENTO.DE.OFERTA.DEL.PROGRAMA, COD_MUN_PROGRAMA = `CÓDIGO.DEL.MUNICIPIO.(PROGRAMA)`, MUN_PROGRAMA = MUNICIPIO.DE.OFERTA.DEL.PROGRAMA,
                           SEXO = SEXO, AÑO = AÑO, SEMESTRE = Semestre, TOTAL_MATRICULA = MATRICULADOS)
 
+
+# 2022
+
+mat_2022 %<>% select(CODIGO_IES = CÓDIGO.DE.LA.INSTITUCIÓN, Semestre = SEMESTRE, everything())
+
+mat_esta_2022 = mat_estadistica(mat_2022)
+rm(mat_2022)
+
+
+mat_esta_2022 %<>% select(CODIGO_IES, IES_PADRE = IES_PADRE, IES = `INSTITUCIÓN.DE.EDUCACIÓN.SUPERIOR.(IES)`, SECTOR = SECTOR.IES, CARACTER = CARACTER.IES,
+                          COD_DPTO_IES = `CÓDIGO.DEL.DEPARTAMENTO.(IES)`, DPTO_IES = DEPARTAMENTO.DE.DOMICILIO.DE.LA.IES, COD_MUN_IES = `CÓDIGO.DEL.MUNICIPIO.(IES)`, MUN_IES = MUNICIPIO.DE.DOMICILIO.DE.LA.IES, CODIGO_SNIES_PROGRAMA = CÓDIGO.SNIES.DEL.PROGRAMA, 
+                          PROGRAMA = PROGRAMA.ACADÉMICO, NIVEL_ACADEMICO = NIVEL.ACADÉMICO,
+                          NIVEL_FORMACION = NIVEL.DE.FORMACIÓN, METODOLOGIA = METODOLOGÍA,
+                          AREA_CONOCIMIENTO = ÁREA.DE.CONOCIMIENTO, NBC = `NÚCLEO.BÁSICO.DEL.CONOCIMIENTO.(NBC)`, COD_DPTO_PROGRAMA = `CÓDIGO.DEL.DEPARTAMENTO.(PROGRAMA)`,
+                          DPTO_PROGRAMA = DEPARTAMENTO.DE.OFERTA.DEL.PROGRAMA, COD_MUN_PROGRAMA = `CÓDIGO.DEL.MUNICIPIO.(PROGRAMA)`, MUN_PROGRAMA = MUNICIPIO.DE.OFERTA.DEL.PROGRAMA,
+                          SEXO = SEXO, AÑO = AÑO, SEMESTRE = Semestre, TOTAL_MATRICULA = MATRICULADOS)
+
+
+
+
 mat_esta_20142021 = rbind(mat_esta_2014, mat_esta_2015, mat_esta_2016, mat_esta_2017,
-                            mat_esta_2018, mat_esta_2019, mat_esta_2020, mat_esta_2021)
+                            mat_esta_2018, mat_esta_2019, mat_esta_2020, mat_esta_2021, mat_esta_2022)
 
 rm(mat_esta_2014, mat_esta_2015, mat_esta_2016, mat_esta_2017,
-                            mat_esta_2018, mat_esta_2019, mat_esta_2020, mat_esta_2021)
+                            mat_esta_2018, mat_esta_2019, mat_esta_2020, mat_esta_2021, mat_esta_2022)
+
 
 
 Historico_Matricula_ES = rbind(mat_esta_20002013, mat_esta_20142021)
@@ -307,7 +332,262 @@ ggsave("Histórico Matrícula.png", matplot, width = 12, height = 7)
 
 ```
 
+## Second Plot knowlege area
+```{r}
+table(Historico_Matricula_ES$AREA_CONOCIMIENTO)
+
+# Unifying characters
+
+Historico_Matricula_ES$AREA_CONOCIMIENTO %<>% str_replace("AGRONOMIA VETERINARIA Y AFINES", "AGRONOMIA, VETERINARIA Y AFINES")
+Historico_Matricula_ES$AREA_CONOCIMIENTO %<>% str_replace("ECONOMIA ADMINISTRACION CONTADURIA Y AFINES", "ECONOMIA, ADMINISTRACION, CONTADURIA Y AFINES")
+Historico_Matricula_ES$AREA_CONOCIMIENTO %<>% str_replace("INGENIERIA ARQUITECTURA URBANISMO Y AFINES", "INGENIERIA, ARQUITECTURA, URBANISMO Y AFINES")
+Historico_Matricula_ES$AREA_CONOCIMIENTO %<>% tolower()
+
+
+capitalize_first_word <- function(text) {
+  lower<- str_to_lower(text)
+  words <- strsplit(lower, " ")[[1]]
+  words[1] <- str_to_title(words[1])
+  return(paste(words, collapse = " "))
+}
+
+
+Historico_Matricula_ES$AREA_CONOCIMIENTO <- sapply(Historico_Matricula_ES$AREA_CONOCIMIENTO, capitalize_first_word)
+
+
+AREA= Historico_Matricula_ES %>% filter(NIVEL_ACADEMICO == "PREGRADO") %>% group_by(AREA_CONOCIMIENTO,AÑO) %>% 
+  summarise(TotalMat = sum(TOTAL_MATRICULA)) %>% ungroup() %>% filter(AREA_CONOCIMIENTO != "Sin clasificar")
+AREA$AÑO %<>% as.numeric()
+AREA%<>% group_by(AÑO) %<>% mutate(share =( TotalMat/sum(TotalMat))*100) 
+
+AREA %<>% select(Área = AREA_CONOCIMIENTO, everything())
+
+AREA$Área <-  fct_rev(AREA$Área)
+
+AREA <- AREA %>%
+  mutate(Área = fct_reorder(Área, desc(-share)))
+
+AREA_plot = ggplot(data = AREA,aes(x= AÑO, y=share, fill = Área)) + 
+  geom_col()+
+  geom_text(aes(label = paste0(round(share ), "%")), 
+            position = position_stack(vjust = 0.5), 
+            size = 2)+
+labs(title="Composición histórica de la matrícula en educación superior en Colombia",
+     subtitle = "Nivel académico: Pregrado",
+        y = "Participación por área del conocimiento", 
+        caption = c("Fuente: Ministerio de Educación Nacional - Colombia", "Elaboración: @luchobarajas_"),
+        colour ="") + scale_fill_manual(values = c("#ad1457","#f44336","#ff9800","#ffc107","#8bc34a" ,"#009688","#1565c0","#448aff"))+
+  theme(panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size =20),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=c(0,1), size = 14),axis.text = element_text(size = 14), 
+        legend.text = element_text(size = 12)) 
+
+ggsave("Área Histórico.png", AREA_plot, width = 13, height = 7)
+```
+
+## Second Plot Basic core of knowledge
+
+```{r}
+# Unifying characters
+
+Historico_Matricula_ES$NBC %<>% str_replace_all(",","")
+Historico_Matricula_ES$NBC %<>% str_replace_all("ANTROPOLOGIA ARTES LIBERALES","ANTROPOLOGIA Y  ARTES LIBERALES")
+Historico_Matricula_ES$NBC %<>% str_replace_all("ANTROPOLOGIA Y  ARTES LIBERALES", "ANTROPOLOGIA Y ARTES LIBERALES")
+Historico_Matricula_ES$NBC %<>% str_replace_all("ATES PLASTICAS VISUALES Y AFINES", "ARTES PLASTICAS VISUALES Y AFINES")
+Historico_Matricula_ES$NBC %<>% str_replace_all("BIBLIOTECOLOGIA OTROS DE CIENCIAS SOCIALES Y HUMANAS", "BIBLIOTECOLOGIA Y OTROS DE CIENCIAS SOCIALES Y HUMANAS")
+Historico_Matricula_ES$NBC %<>% str_replace_all("CIENCIA POLITICA RELACIONES INTERNACIONALES", "CIENCIA POLITICA Y RELACIONES INTERNACIONALES")
+Historico_Matricula_ES$NBC %<>% str_replace_all("DISENIO", "DISEÑO")
+Historico_Matricula_ES$NBC %<>% str_replace_all("IINGENIERIA INDUSTRIAL ALIMENTOS Y AFINES", "INGENIERIA AGROINDUSTRIAL ALIMENTOS Y AFINES")
+Historico_Matricula_ES$NBC %<>% str_replace_all("INGENIERIA ADMNISTRATIVA Y AFINES","INGENIERIA ADMINISTRATIVA Y AFINES")
+Historico_Matricula_ES$NBC %<>% str_replace_all("OPTOMETRIA OTROS PROGRAMAS DE CIENCIAS DE LA SALUD","OPTOMETRIA Y OTROS PROGRAMAS DE CIENCIAS DE LA SALUD")
+
+Historico_Matricula_ES$NBC <- sapply(Historico_Matricula_ES$NBC, capitalize_first_word)
+
+NBC = Historico_Matricula_ES %>% filter(NIVEL_ACADEMICO == "PREGRADO") %>%
+  group_by(AREA_CONOCIMIENTO,NBC,AÑO) %>% 
+  summarise(TotalMat = sum(TOTAL_MATRICULA)) %>% 
+  ungroup() %>% 
+  filter(NBC != "Sin clasificar")
+
+NBC$AÑO %<>% as.numeric()
+NBC%<>% group_by(AÑO, AREA_CONOCIMIENTO) %<>% mutate(share =( TotalMat/sum(TotalMat))*100) 
+
+#--- EAC
+EAC = NBC %>% filter(AREA_CONOCIMIENTO == "Economia, administracion, contaduria y afines")
+EAC$NBC<- fct_rev(EAC$NBC)
+
+
+EAC_plot = ggplot(data = EAC,aes(x= AÑO, y=share, fill = NBC)) + 
+  geom_col()+
+  geom_text(aes(label = paste0(round(share ), "%")), 
+            position = position_stack(vjust = 0.5), 
+            size = 2)+
+labs(title="Composición histórica de la matrícula NBC Economía, administración y contaduría",
+     subtitle = "Nivel académico: Pregrado",
+        y = "Participación por NBC", 
+        caption = c("Fuente: Ministerio de Educación Nacional - Colombia", "Elaboración: @luchobarajas_"),
+        colour ="") +
+  scale_fill_manual(values = c("#DBEFED","#08cad1","#1A81D1"))+
+  theme(panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size =20),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=c(0,1), size = 14),axis.text = element_text(size = 14), 
+        legend.text = element_text(size = 12))
+
+
+ggsave("EAC Histórico.png", EAC_plot, width = 12, height = 7)
+
+```
+
+
+```{r}
+#--- Ciencias Sociales 
+
+NBC = Historico_Matricula_ES %>% filter(NIVEL_ACADEMICO == "PREGRADO") 
+
+NBC %<>% mutate(NBC = if_else(NBC== "Antropologia y artes liberales"|
+                                    NBC== "Bibliotecologia y otros de ciencias sociales y humanas"|
+                                    NBC== "Lenguas modernas literatura linguistica y afines"|
+                                    NBC== "Geografia historia"|
+                                    NBC == "Formacion relacionada con el campo militar o policial" |
+                                    NBC == "Filosofia teologia y afines", 
+                                    "Otros de ciencias sociales y humanas", NBC))
+
+NBC %<>% group_by(AREA_CONOCIMIENTO,NBC,AÑO) %>% 
+  summarise(TotalMat = sum(TOTAL_MATRICULA)) %>% 
+  ungroup() %>% 
+  filter(NBC != "Sin clasificar")
+
+NBC$AÑO %<>% as.numeric()
+
+Csociales = NBC %>% filter(AREA_CONOCIMIENTO == "Ciencias sociales y humanas")
+Csociales %<>% group_by(AÑO, AREA_CONOCIMIENTO) %<>% 
+  mutate(share =( TotalMat/sum(TotalMat))*100) 
+
+
+Csociales <- Csociales %>%
+  mutate(NBC = fct_reorder(NBC, desc(-share)))
 
 
 
+Cs_plot = ggplot(data = Csociales,aes(x= AÑO, y=share, fill = NBC)) + 
+  geom_col()+
+  geom_text(aes(label = paste0(round(share ), "%")), 
+            position = position_stack(vjust = 0.5), 
+            size = 2)+  scale_fill_manual(values = c("#fb8500","#fd9e02", "#ffb703", "#f0efeb","#126782","#219ebc","#8ecae6"))+
+labs(title="Composición histórica de la matrícula NBC Ciencias Sociales",
+     subtitle = "Nivel académico: Pregrado",
+        y = "Participación por NBC", 
+        caption = c("Fuente: Ministerio de Educación Nacional - Colombia", "Elaboración: @luchobarajas_"),
+        colour ="") +
+  theme(panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        legend.position = "right",
+        plot.title = element_text(hjust = 0.5, size =20),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=c(0,1), size = 14),axis.text = element_text(size = 14), 
+        legend.text = element_text(size = 12))
+
+ggsave("CS Histórico.png", Cs_plot, width = 12, height = 7)
+```
+
+
+```{r}
+#---Ingenierías
+
+NBC = Historico_Matricula_ES %>% filter(NIVEL_ACADEMICO == "PREGRADO") 
+
+NBC %<>% mutate(NBC = if_else(NBC == "Ingenieria administrativa y afines"|
+                              NBC == "Ingenieria admnistrativa y afines"|
+                              NBC == "Ingenieria agricola forestal y afines"|
+                              NBC == "Ingenieria de minas metalurgia y afines"|
+                              NBC == "Ingenieria biomedica y afines"|
+                              NBC == "Ingenieria agronomica pecuaria y afines"|
+                              NBC == "Ingenieria quimica y afines", 
+                                    "Otras ingenierias", NBC))
+NBC %<>% group_by(AREA_CONOCIMIENTO,NBC,AÑO) %>% 
+  summarise(TotalMat = sum(TOTAL_MATRICULA)) %>% 
+  ungroup() %>% 
+  filter(NBC != "Sin clasificar")
+
+NBC$AÑO %<>% as.numeric()
+
+Ing = NBC %>% filter(AREA_CONOCIMIENTO == "Ingenieria, arquitectura, urbanismo y afines")
+Ing %<>% group_by(AÑO, AREA_CONOCIMIENTO) %<>% 
+  mutate(share =( TotalMat/sum(TotalMat))*100) 
+
+Ing <- Ing %>%
+  mutate(NBC = fct_reorder(NBC, desc(-share)))
+
+Ing_plot = ggplot(data = Ing,aes(x= AÑO, y=share, fill = NBC)) + 
+  geom_col()+
+  geom_text(aes(label = paste0(round(share ), "%")), 
+            position = position_stack(vjust = 0.5), 
+            size = 2) + scale_fill_manual(values = c("#54478c","#2c699a","#048ba8","#0db39e","#16db93", "#83e377", "#b9e769","#efea5a","#f1c453","#f29e4c"))+
+labs(title="Composición histórica de la matrícula NBC Ingeniería, arquitectura, urbanismo y afines",
+     subtitle = "Nivel académico: Pregrado",
+        y = "Participación por NBC", 
+        caption = c("Fuente: Ministerio de Educación Nacional - Colombia", "Elaboración: @luchobarajas_"),
+        colour ="") +
+  theme(panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        legend.position = "right",
+        plot.title = element_text(hjust = -0.5, size =20),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=c(0,1), size = 14),axis.text = element_text(size = 14), 
+        legend.text = element_text(size = 12)) 
+
+
+ggsave("Ing Histórico.png", Ing_plot, width = 12, height = 7)
+```
+
+```{r}
+
+AREA_Gen = Historico_Matricula_ES %>% filter(NIVEL_ACADEMICO == "PREGRADO"& AÑO > 2011) %>% group_by(AREA_CONOCIMIENTO,AÑO, SEXO) %>% 
+  summarise(TotalMat = sum(TOTAL_MATRICULA)) %>% ungroup() %>% filter(AREA_CONOCIMIENTO != "Sin clasificar")
+AREA_Gen$AÑO %<>% as.numeric()
+AREA_Gen%<>% group_by(AÑO,SEXO) %<>% mutate(share =( TotalMat/sum(TotalMat))*100) 
+
+AREA_Gen %<>% select(Área = AREA_CONOCIMIENTO, everything())
+
+AREA_Gen %<>% mutate(SEXO = if_else(SEXO== "HOMBRE", "Hombre", "Mujer"))
+
+AREA_Gen <- AREA_Gen %>%
+  mutate(Área = fct_reorder(Área, desc(-share)))
+
+AREA_Gen_plot = ggplot(data = AREA_Gen,aes(x= AÑO, y=share, fill = Área)) + 
+  geom_col()+
+  geom_text(aes(label = paste0(round(share ), "%")), 
+            position = position_stack(vjust = 0.5), 
+            size = 2)+
+labs(title="Composición histórica de la matrícula en educación superior en Colombia por Sexo",
+     subtitle = "Nivel académico: Pregrado",
+        y = "Participación por área del conocimiento", 
+        caption = c("Fuente: Ministerio de Educación Nacional - Colombia", "Elaboración: @luchobarajas_"),
+        colour ="") + scale_fill_manual(values = c("#ad1457","#f44336","#ff9800","#ffc107","#8bc34a" ,"#009688","#1565c0","#448aff"))+
+  theme(panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size =20),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust=c(0,1), size = 14),axis.text = element_text(size = 14), 
+        legend.text = element_text(size = 12)) + facet_wrap(vars(SEXO))
+
+ggsave("Area gen Histórico.png", AREA_Gen_plot , width = 12, height = 7)
+```
 
